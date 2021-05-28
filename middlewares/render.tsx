@@ -6,6 +6,7 @@ import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
 import StoreComponent from '@steroidsjs/core/components/StoreComponent';
 import reducers from '@steroidsjs/core/reducers';
 import {initRoutes} from '@steroidsjs/core/actions/router';
+import {setUser} from '@steroidsjs/core/actions/auth';
 import {getAssets} from '../utils';
 // @ts-ignore
 import Application from '_SsrApplication';
@@ -43,31 +44,30 @@ const getHTML = ({bundleHTML, store}) => {
 
 export default (req, res, next) => {
     res.renderBundle = () => {
+        const history = {
+            initialEntries: [req.url || '/']
+        };
+
         const store = new StoreComponent({}, {
             reducers,
-            initialState: {
-                auth: {
-                    isInitialized: true,
-                    user: null
-                }
-            },
-            history: {
-                initialEntries: [req.url || '/']
-            }
+            history
         });
 
-        store.dispatch({type: '@@redux/INIT'});
-        store.dispatch(initRoutes(
-            walkRoutesRecursive({id: 'root', ...routes}),
-        ))
+        const toDispatch = [
+            {type: '@@redux/INIT'},
+            initRoutes(
+                walkRoutesRecursive({id: 'root', ...routes}),
+            ),
+            setUser(null)
+        ]
+
+        store.dispatch(toDispatch);
 
         const context: StaticRouterContext = {};
 
         const bundleHTML = renderToString(
             <SsrProvider
-                history={{
-                    initialEntries: [req.url]
-                }}
+                history={history}
                 initialState={store.getState()}
                 staticContext={context}
             >
@@ -82,7 +82,9 @@ export default (req, res, next) => {
 
         const html = getHTML({bundleHTML, store: store.getState()});
 
-        res.status(context.statusCode || 200).send(html);
+        res
+            .status(context.statusCode || 200)
+            .send(html);
     }
 
     next();

@@ -14,9 +14,11 @@
     "url": "https://github.com/steroids/ssr/issues"
   },
   "dependencies": {
+    "@steroidsjs/core": "latest",
     "express": "^4.17.1",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "react-dom": "^17.0.2",
+    "react-router": "^5.2.0"
   },
   "devDependencies": {
     "@types/react": "^17.0.2",
