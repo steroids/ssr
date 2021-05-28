@@ -3,15 +3,15 @@ import compression from 'compression';
 import {join} from 'path';
 import render from './middlewares/render';
 
-const port = process.env.APP_SSR_APPLICATION_PORT;
-const host = process.env.APP_SSR_APPLICATION_HOST;
+const port = process.env.APP_SSR_PORT;
+const host = process.env.APP_SSR_HOST;
 const app = express();
 
 app
     .disable('x-powered-by')
     .enable('trust proxy')
     .use(compression())
-    .use(express.static(join(process.env.APP_SSR_APPLICATION_OUTPUT_PATH)))
+    .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
     .use(render);
 
 app.get('*', (req, res) => {

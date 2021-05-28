@@ -1,19 +1,18 @@
-import React from 'react';
+import * as React from 'react';
 import {renderToStaticMarkup, renderToString} from 'react-dom/server';
 import {StaticRouterContext} from 'react-router';
 import SsrProvider from '@steroidsjs/core/ui/nav/Router/SsrProvider';
-import {getAssets} from '../utils';
 import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
 import StoreComponent from '@steroidsjs/core/components/StoreComponent';
 import reducers from '@steroidsjs/core/reducers';
-
+import {initRoutes} from '@steroidsjs/core/actions/router';
+import {getAssets} from '../utils';
 // @ts-ignore
 import Application from '_SsrApplication';
 //@ts-ignore
 import stats from '_SsrStats'
 //@ts-ignore
 import routes from '_SsrRoutes';
-import {initRoutes} from '../../react/src/actions/router';
 
 const getHTML = ({bundleHTML, store}) => {
     const assets = getAssets(stats);
