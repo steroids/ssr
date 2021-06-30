@@ -1,26 +1,29 @@
-import express from 'express';
+import express, {Request} from 'express';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import {join} from 'path';
-import render from './middlewares/render';
+import render, {ResponseWithRender} from './middlewares/render';
 
-const port = process.env.APP_SSR_PORT;
+const port = Number(process.env.APP_SSR_PORT);
 const host = process.env.APP_SSR_HOST;
 const app = express();
 
 app
     .disable('x-powered-by')
     .enable('trust proxy')
+    .use(cookieParser())
     .use(compression())
     .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
     .use(render);
 
-app.get('*', (req, res) => {
+app.get('*', (req: Request, res: ResponseWithRender) => {
     const accessTokenMatch = (req.headers.cookie || '').match(/accessToken\s*=\s*(\w+)/);
     const accessToken = accessTokenMatch && accessTokenMatch[1] || null;
-    //res.writeHead(200, {'Content-Type': 'text/html'});
+
     res.renderBundle();
 });
 
+// @ts-ignore
 app.listen(port, host, (err) => {
     if (err) {
         console.error(err)

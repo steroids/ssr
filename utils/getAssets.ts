@@ -16,7 +16,7 @@ interface IStats {
     assetsUrls: string[]
 }
 
-export const getAssets = (stats: IStats): Record<string, string[]> => {
+const getAssets = (stats: IStats): Record<string, string[]> => {
     const assets = stats.assets.filter(asset => asset.chunks.includes('index') || asset.chunks.includes('common'));
 
     return {
@@ -24,3 +24,5 @@ export const getAssets = (stats: IStats): Record<string, string[]> => {
         js: assets.filter(asset => /\.js/.test(asset.name)).map(asset => asset.name),
     }
 }
+
+export default getAssets;

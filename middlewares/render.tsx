@@ -1,27 +1,35 @@
 import * as React from 'react';
 import {renderToStaticMarkup, renderToString} from 'react-dom/server';
+import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
-import SsrProvider from '@steroidsjs/core/ui/nav/Router/SsrProvider';
+import SsrProvider from '@steroidsjs/core/providers/SsrProvider';
 import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
-import StoreComponent from '@steroidsjs/core/components/StoreComponent';
-import reducers from '@steroidsjs/core/reducers';
 import {initRoutes} from '@steroidsjs/core/actions/router';
 import {setUser} from '@steroidsjs/core/actions/auth';
-import {getAssets} from '../utils';
-// @ts-ignore
-import Application from '_SsrApplication';
-//@ts-ignore
-import stats from '_SsrStats'
-//@ts-ignore
-import routes from '_SsrRoutes';
+import getAssets from '../utils/getAssets';
+import getComponents from '../utils/getComponents';
+import {ComponentsProvider} from '../../react/src/providers';
 
-const getHTML = ({bundleHTML, store}) => {
-    const assets = getAssets(stats);
+export interface ResponseWithRender extends Response {
+    renderBundle: () => void;
+}
+
+interface IHTMLParams {
+    bundleHTML: string,
+    store: any
+}
+
+export interface IHistory {
+    initialEntries: string[]
+}
+
+const getHTML = ({bundleHTML, store}: IHTMLParams): string => {
+    const {css, js} = getAssets(require('_SsrStats'));
 
     const html = renderToStaticMarkup(
         <html>
             <head>
-                {assets.css.map((path, index) => (
+                {css.map((path, index) => (
                     <link key={index} href={`/${path}`} rel='stylesheet'/>
                 ))}
             </head>
@@ -32,7 +40,7 @@ const getHTML = ({bundleHTML, store}) => {
                         __html: `window.__PRELOADED_STATE__ = ${JSON.stringify(store)}`
                     }}
                 />
-                {assets.js.map((path, index) => (
+                {js.map((path, index) => (
                     <script key={index} src={`/${path}`}/>
                 ))}
             </body>
@@ -42,36 +50,35 @@ const getHTML = ({bundleHTML, store}) => {
     return `<!doctype html>${html}`;
 };
 
-export default (req, res, next) => {
+export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
     res.renderBundle = () => {
-        const history = {
+        const {default: Application, config: appConfig} = require('_SsrApplication');
+
+        const history: IHistory = {
             initialEntries: [req.url || '/']
         };
 
-        const store = new StoreComponent({}, {
-            reducers,
-            history
-        });
+        const components = getComponents(appConfig, {req, res, history});
 
         const toDispatch = [
             {type: '@@redux/INIT'},
             initRoutes(
-                walkRoutesRecursive({id: 'root', ...routes}),
+                walkRoutesRecursive({id: 'root', ...appConfig.routes()}),
             ),
             setUser(null)
         ]
-
-        store.dispatch(toDispatch);
+        components.store.dispatch(toDispatch);
 
         const context: StaticRouterContext = {};
 
         const bundleHTML = renderToString(
             <SsrProvider
                 history={history}
-                initialState={store.getState()}
                 staticContext={context}
             >
-                <Application/>
+                <ComponentsProvider components={components}>
+                    <Application/>
+                </ComponentsProvider>
             </SsrProvider>
         );
 
@@ -80,7 +87,7 @@ export default (req, res, next) => {
             return;
         }
 
-        const html = getHTML({bundleHTML, store: store.getState()});
+        const html = getHTML({bundleHTML, store: components.store.getState()});
 
         res
             .status(context.statusCode || 200)
