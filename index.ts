@@ -1,8 +1,9 @@
-import express, {Request} from 'express';
+import express, {NextFunction, Request} from 'express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import {join} from 'path';
 import render, {ResponseWithRender} from './middlewares/render';
+import {ignoreFavicon} from './middlewares';
 
 const port = Number(process.env.APP_SSR_PORT);
 const host = process.env.APP_SSR_HOST;
@@ -14,7 +15,8 @@ app
     .use(cookieParser())
     .use(compression())
     .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
-    .use(render);
+    .use(ignoreFavicon)
+    .use(render)
 
 app.get('*', (req: Request, res: ResponseWithRender) => {
     const accessTokenMatch = (req.headers.cookie || '').match(/accessToken\s*=\s*(\w+)/);
