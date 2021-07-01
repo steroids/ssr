@@ -54,6 +54,10 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
     res.renderBundle = () => {
         const {default: Application, config: appConfig} = require('_SsrApplication');
 
+        if (!appConfig) {
+            throw new Error(`Please save application's config in variable and export it from _SsrApplication`)
+        }
+
         const history: IHistory = {
             initialEntries: [req.url || '/']
         };
