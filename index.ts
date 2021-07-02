@@ -19,9 +19,6 @@ app
     .use(render)
 
 app.get('*', (req: Request, res: ResponseWithRender) => {
-    const accessTokenMatch = (req.headers.cookie || '').match(/accessToken\s*=\s*(\w+)/);
-    const accessToken = accessTokenMatch && accessTokenMatch[1] || null;
-
     res.renderBundle();
 });
 

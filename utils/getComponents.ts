@@ -1,14 +1,10 @@
 import {Request, Response} from 'express';
-import ClientStorageComponent from '@steroidsjs/core/components/ClientStorageComponent';
-import HtmlComponent from '@steroidsjs/core/components/HtmlComponent';
-import MetaComponent from '@steroidsjs/core/components/MetaComponent';
-import UiComponent from '@steroidsjs/core/components/UiComponent';
-import MetricsComponent from '@steroidsjs/core/components/MetricsComponent';
-import StoreComponent from '@steroidsjs/core/components/StoreComponent';
-import {IHistory} from '../middlewares/render';
-import detectLanguage from './detectLanguage';
+import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
+import {defaultComponents} from '@steroidsjs/core/hooks/useApplication';
+import {IHistory} from './getHistory';
+import {detectLanguage} from '../utils';
 
-enum ComponentsEnum {
+export enum ComponentsEnum {
     Locale = 'locale',
     Store = 'store',
     ClientStorage = 'clientStorage',
@@ -18,35 +14,10 @@ enum ComponentsEnum {
     Metrics = 'metrics'
 }
 
-interface IComponents {
-    [key: string]: Record<string, any>
-}
-
 interface IComponentData {
     req: Request,
     res: Response
     history: IHistory
-}
-
-const defaultComponentsConfig = {
-    [ComponentsEnum.Store]: {
-        className: StoreComponent,
-    },
-    [ComponentsEnum.ClientStorage]: {
-        className: ClientStorageComponent,
-    },
-    [ComponentsEnum.Html]: {
-        className: HtmlComponent,
-    },
-    [ComponentsEnum.Meta]: {
-        className: MetaComponent,
-    },
-    [ComponentsEnum.Ui]: {
-        className: UiComponent,
-    },
-    [ComponentsEnum.Metrics]: {
-        className: MetricsComponent,
-    },
 }
 
 const enrichComponentConfig = (name: string, config: Record<string, any>, data: IComponentData) => {
@@ -69,14 +40,14 @@ const enrichComponentConfig = (name: string, config: Record<string, any>, data: 
 
     const getResult = map[name];
     if (getResult) {
-        return getResult();
+        getResult();
     }
 }
 
-const getComponents = (config: Record<string, any>, data: IComponentData): IComponents => {
+const getComponents = (appConfig: Record<string, any>, data: IComponentData): IComponents => {
     const componentsConfig = {
-        ...defaultComponentsConfig,
-        ...config.components,
+        ...defaultComponents,
+        ...appConfig.components,
     };
 
     const result = Object.entries(componentsConfig).reduce((acc, [name, value]): IComponents => {
@@ -93,8 +64,8 @@ const getComponents = (config: Record<string, any>, data: IComponentData): IComp
         return acc;
     }, {});
 
-    if (config.onInit) {
-        config.onInit(result);
+    if (appConfig.onInit) {
+        appConfig.onInit(result);
     }
 
     return result;

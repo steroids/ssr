@@ -2,13 +2,8 @@ import * as React from 'react';
 import {renderToStaticMarkup, renderToString} from 'react-dom/server';
 import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
-import SsrProvider from '@steroidsjs/core/providers/SsrProvider';
-import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
-import {initRoutes} from '@steroidsjs/core/actions/router';
-import {setUser} from '@steroidsjs/core/actions/auth';
-import getAssets from '../utils/getAssets';
-import getComponents from '../utils/getComponents';
-import {ComponentsProvider} from '../../react/src/providers';
+import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
+import {initStore, getComponents, getHistory, getAssets} from '../utils';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -17,10 +12,6 @@ export interface ResponseWithRender extends Response {
 interface IHTMLParams {
     bundleHTML: string,
     store: any
-}
-
-export interface IHistory {
-    initialEntries: string[]
 }
 
 const getHTML = ({bundleHTML, store}: IHTMLParams): string => {
@@ -53,27 +44,15 @@ const getHTML = ({bundleHTML, store}: IHTMLParams): string => {
 export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
     res.renderBundle = () => {
         const {default: Application, config: appConfig} = require('_SsrApplication');
-
         if (!appConfig) {
-            throw new Error(`Please save application's config in variable and export it from _SsrApplication`)
+            throw new Error(`Please save application's config in variable and export it from _SsrApplication`);
         }
 
-        const history: IHistory = {
-            initialEntries: [req.url || '/']
-        };
-
+        const history = getHistory(req.url);
         const components = getComponents(appConfig, {req, res, history});
-
-        const toDispatch = [
-            {type: '@@redux/INIT'},
-            initRoutes(
-                walkRoutesRecursive({id: 'root', ...appConfig.routes()}),
-            ),
-            setUser(null)
-        ]
-        components.store.dispatch(toDispatch);
-
         const context: StaticRouterContext = {};
+
+        initStore(components.store, {routes: appConfig.routes()});
 
         const bundleHTML = renderToString(
             <SsrProvider
