@@ -2,8 +2,9 @@ import * as React from 'react';
 import {renderToStaticMarkup, renderToString} from 'react-dom/server';
 import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
+import {Helmet, HelmetData} from 'react-helmet';
 import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
-import {initStore, getComponents, getHistory, getAssets} from '../utils';
+import {initStore, getComponents, getHistory, getAssets, getHelmetComponent} from '../utils';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -11,27 +12,31 @@ export interface ResponseWithRender extends Response {
 
 interface IHTMLParams {
     bundleHTML: string,
+    helmet: HelmetData,
     store: any
 }
 
-const getHTML = ({bundleHTML, store}: IHTMLParams): string => {
-    const {css, js} = getAssets(require('_SsrStats'));
+const getHTML = ({bundleHTML, store, helmet}: IHTMLParams): string => {
+    const stats = getAssets(require('_SsrStats'));
 
     const html = renderToStaticMarkup(
         <html>
             <head>
-                {css.map((path, index) => (
+                <meta charSet='utf-8'/>
+                <meta name='viewport' content='width=device-width, initial-scale=1'/>
+                {['base', 'title', 'meta', 'link', 'style', 'script'].map(tagName => getHelmetComponent(helmet, tagName))}
+                {stats.css.map((path, index) => (
                     <link key={index} href={`/${path}`} rel='stylesheet'/>
                 ))}
             </head>
             <body>
+                <noscript>You need to enable JavaScript to run this app.</noscript>
+                {getHelmetComponent(helmet, 'noscript')}
                 <div id='root' dangerouslySetInnerHTML={{__html: bundleHTML}}/>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `window.__PRELOADED_STATE__ = ${JSON.stringify(store)}`
-                    }}
-                />
-                {js.map((path, index) => (
+                <script dangerouslySetInnerHTML={{
+                    __html: `window.__PRELOADED_STATE__ = ${JSON.stringify(store)}`
+                }}/>
+                {stats.js.map((path, index) => (
                     <script key={index} src={`/${path}`}/>
                 ))}
             </body>
@@ -70,7 +75,11 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             return;
         }
 
-        const html = getHTML({bundleHTML, store: components.store.getState()});
+        const html = getHTML({
+            helmet: Helmet.rewind(),
+            bundleHTML,
+            store: components.store.getState()
+        });
 
         res
             .status(context.statusCode || 200)
