@@ -4,7 +4,7 @@ import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
 import {Helmet, HelmetData} from 'react-helmet';
 import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
-import {initStore, getComponents, getHistory, getAssets, getHelmetComponent} from '../utils';
+import {initStore, getComponents, getHistory, getAssets} from '../utils';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -24,14 +24,18 @@ const getHTML = ({bundleHTML, store, helmet}: IHTMLParams): string => {
             <head>
                 <meta charSet='utf-8'/>
                 <meta name='viewport' content='width=device-width, initial-scale=1'/>
-                {['base', 'title', 'meta', 'link', 'style', 'script'].map(tagName => getHelmetComponent(helmet, tagName))}
+                {['base', 'title', 'meta', 'link', 'style', 'script'].map(tagName => (
+                    <React.Fragment key={tagName}>
+                        {helmet[tagName].toComponent()}
+                    </React.Fragment>
+                ))}
                 {stats.css.map((path, index) => (
                     <link key={index} href={`/${path}`} rel='stylesheet'/>
                 ))}
             </head>
             <body>
                 <noscript>You need to enable JavaScript to run this app.</noscript>
-                {getHelmetComponent(helmet, 'noscript')}
+                {helmet.noscript.toComponent()}
                 <div id='root' dangerouslySetInnerHTML={{__html: bundleHTML}}/>
                 <script dangerouslySetInnerHTML={{
                     __html: `window.__PRELOADED_STATE__ = ${JSON.stringify(store)}`
