@@ -15,7 +15,6 @@ app
     .use(cookieParser())
     .use(compression())
     .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
-    .use(ignoreFavicon)
     .use(render)
 
 app.get('*', (req: Request, res: ResponseWithRender) => {
