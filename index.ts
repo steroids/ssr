@@ -3,7 +3,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import {join} from 'path';
 import render, {ResponseWithRender} from './middlewares/render';
-import {ignoreFavicon} from './middlewares';
+import router from './routes';
 
 const port = Number(process.env.APP_SSR_PORT);
 const host = process.env.APP_SSR_HOST;
@@ -16,9 +16,10 @@ app
     .use(compression())
     .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
     .use(render)
+    .use(router) //TODO example router for prefetch testing
 
-app.get('*', (req: Request, res: ResponseWithRender) => {
-    res.renderBundle();
+app.get('*', async (req: Request, res: ResponseWithRender) => {
+    await res.renderBundle();
 });
 
 // @ts-ignore

@@ -4,7 +4,8 @@ import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
 import {Helmet, HelmetData} from 'react-helmet';
 import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
-import {initStore, getComponents, getHistory, getAssets} from '../utils';
+import {getComponents, initComponents, getHistory, getAssets, getPreloadedData} from '../utils';
+import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -13,10 +14,11 @@ export interface ResponseWithRender extends Response {
 interface IHTMLParams {
     bundleHTML: string,
     helmet: HelmetData,
-    store: any
+    store: any,
+    preloadedData: IPreloadedData
 }
 
-const getHTML = ({bundleHTML, store, helmet}: IHTMLParams): string => {
+const getHTML = ({bundleHTML, store, helmet, preloadedData}: IHTMLParams): string => {
     const stats = getAssets(require('_SsrStats'));
 
     const html = renderToStaticMarkup(
@@ -38,7 +40,8 @@ const getHTML = ({bundleHTML, store, helmet}: IHTMLParams): string => {
                 {helmet.noscript.toComponent()}
                 <div id='root' dangerouslySetInnerHTML={{__html: bundleHTML}}/>
                 <script dangerouslySetInnerHTML={{
-                    __html: `window.__PRELOADED_STATE__ = ${JSON.stringify(store)}`
+                    __html: `window.APP_REDUX_PRELOAD_STATES = ${JSON.stringify([store])};
+                        window.APP_PRELOADED_DATA=${JSON.stringify(preloadedData)}`
                 }}/>
                 {stats.js.map((path, index) => (
                     <script key={index} src={`/${path}`}/>
@@ -50,23 +53,36 @@ const getHTML = ({bundleHTML, store, helmet}: IHTMLParams): string => {
     return `<!doctype html>${html}`;
 };
 
-export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
-    res.renderBundle = () => {
+export default (req: Request, res: ResponseWithRender, next: NextFunction) => { //TODO сделать инит
+    res.renderBundle = async () => {
         const {default: Application, config: appConfig} = require('_SsrApplication');
         if (!appConfig) {
             throw new Error(`Please save application's config in variable and export it from _SsrApplication`);
         }
 
         const history = getHistory(req.url);
-        const components = getComponents(appConfig, {req, res, history});
-        const context: StaticRouterContext = {};
+        const components = getComponents({appConfig, req, res, history});
 
-        initStore(components.store, {routes: appConfig.routes()});
+        if (appConfig.onInit) {
+            appConfig.onInit(components);
+        }
+
+        initComponents(components, {appConfig});
+
+        let preloadedData = {} as IPreloadedData;
+        try {
+            preloadedData = await getPreloadedData(appConfig.routes(), req.path, components);
+        } catch (err) {
+            console.error(err);
+        }
+
+        const context: StaticRouterContext = {};
 
         const bundleHTML = renderToString(
             <SsrProvider
                 history={history}
                 staticContext={context}
+                preloadedData={preloadedData}
             >
                 <ComponentsProvider components={components}>
                     <Application/>
@@ -82,7 +98,8 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
         const html = getHTML({
             helmet: Helmet.rewind(),
             bundleHTML,
-            store: components.store.getState()
+            store: components.store.getState(),
+            preloadedData
         });
 
         res
