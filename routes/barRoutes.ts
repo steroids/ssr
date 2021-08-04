@@ -1,17 +1,11 @@
 import {Router} from 'express';
 
-const data = [
-    {
-        userId: 1,
-        name: 'Vasiliy Pupkin',
-        age: 18
+const data = {
+    user: {
+        name: 'Ivan Ivanov',
+        email: 'ivanov@mail.ru'
     },
-    {
-        userId: 2,
-        name: 'Petr Ivanov',
-        age: 20
-    }
-]
+}
 
 const barRoutes = (router: Router) => {
     const barRouter: Router = Router();

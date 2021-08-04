@@ -3,7 +3,6 @@ import _merge from 'lodash-es/merge';
 import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
 import {initRoutes} from '@steroidsjs/core/actions/router';
 import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
-import {setUser} from '@steroidsjs/core/actions/auth';
 import {defaultComponents, IApplicationHookConfig} from '@steroidsjs/core/hooks/useApplication';
 import {IHistory} from './getHistory';
 import {detectLanguage} from '../utils';
@@ -72,6 +71,10 @@ export const getComponents = (data: {
 }
 
 export const initComponents = (components: IComponents, data: {appConfig: IApplicationHookConfig}) => {
+    if (data.appConfig.onInit) {
+        data.appConfig.onInit(components);
+    }
+
     const map = {
         [ComponentsEnum.Store]: () => {
             const toDispatch = [
@@ -79,7 +82,6 @@ export const initComponents = (components: IComponents, data: {appConfig: IAppli
                 initRoutes(
                     walkRoutesRecursive({id: 'root', ...data.appConfig.routes()}),
                 ),
-                setUser(null)
             ]
             components.store.dispatch(toDispatch);
         },

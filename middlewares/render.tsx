@@ -4,7 +4,7 @@ import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
 import {Helmet, HelmetData} from 'react-helmet';
 import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
-import {getComponents, initComponents, getHistory, getAssets, getPreloadedData} from '../utils';
+import {getComponents, initComponents, getHistory, getAssets, getPreloadedData, initApplication} from '../utils';
 import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
 
 export interface ResponseWithRender extends Response {
@@ -53,7 +53,7 @@ const getHTML = ({bundleHTML, store, helmet, preloadedData}: IHTMLParams): strin
     return `<!doctype html>${html}`;
 };
 
-export default (req: Request, res: ResponseWithRender, next: NextFunction) => { //TODO сделать инит
+export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
     res.renderBundle = async () => {
         const {default: Application, config: appConfig} = require('_SsrApplication');
         if (!appConfig) {
@@ -61,13 +61,11 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => { 
         }
 
         const history = getHistory(req.url);
+
         const components = getComponents({appConfig, req, res, history});
-
-        if (appConfig.onInit) {
-            appConfig.onInit(components);
-        }
-
         initComponents(components, {appConfig});
+
+        await initApplication(components);
 
         let preloadedData = {} as IPreloadedData;
         try {
