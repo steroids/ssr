@@ -1,6 +1,23 @@
 import {Router} from 'express';
 
-const data = ['Krasnoyarsk', 'Abakan', 'Tomsk', 'Novokuznetsk']
+const data = [
+    {
+        id: 1,
+        title: 'Krasnoyarsk'
+    },
+    {
+        id: 2,
+        title: 'Abakan'
+    },
+    {
+        id: 3,
+        title: 'Tomsk'
+    },
+    {
+        id: 4,
+        title: 'Novokuznetsk'
+    }
+]
 
 const fooRoutes = (router: Router) => {
     const fooRouter: Router = Router();
