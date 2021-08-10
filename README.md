@@ -67,8 +67,10 @@ export default {
             path: '/catalog/:productId',
             component: ProductPage,
             roles,
-            preloadedData: match => [fetchConfig(match), listConfig]
+            preloadData: match => [fetchConfig(match), listConfig]
         },
     },
 }
 ```
+Пропсы компонента ```List``` нужно передавать в ```preloadData```, даже если ```items``` не нужно подгружать с бэкенда.
+Иначе компонент не отрендерится на сервере.
