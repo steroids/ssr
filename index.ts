@@ -3,7 +3,6 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import {join} from 'path';
 import render, {ResponseWithRender} from './middlewares/render';
-import router from './routes';
 
 const port = Number(process.env.APP_SSR_PORT);
 const host = process.env.APP_SSR_HOST;
