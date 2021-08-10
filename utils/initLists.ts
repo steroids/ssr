@@ -22,8 +22,9 @@ const initLists = (listsConfigs: IListProps[], components: IComponents): Promise
         const paginationProps = normalizePaginationProps(config.pagination);
         const layoutNamesProps = normalizeLayoutNamesProps(config.layout);
 
+        const _searchModel = config.searchModel || config.searchForm?.model;
         const searchModel = components.meta.normalizeModel(
-            components.meta.getModel(config.searchModel || config.searchForm?.model),
+            typeof _searchModel === 'string' ? components.meta.getModel(_searchModel) : _searchModel,
             getDefaultSearchModel({
                 paginationSizeProps,
                 paginationProps,

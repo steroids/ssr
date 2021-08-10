@@ -15,7 +15,6 @@ app
     .use(cookieParser())
     .use(compression())
     .use(express.static(join(process.env.APP_SSR_OUTPUT_PATH)))
-    .use(router) //TODO example routes for testing data preload
     .use(render)
 
 app.get('*', async (req: Request, res: ResponseWithRender) => {
