@@ -33,7 +33,7 @@ const enrichComponentConfig = (name: string, config: IComponentConfig, data): IC
         },
         [ComponentsEnum.ClientStorage]: {
             ssrCookie: {
-                get: key => data.req.cookies[key],
+                get: key => key ? data.req.cookies[key] : data.req.cookies,
                 set: (key, value, options) => data.res.cookie(key, value, options),
                 remove: (key, options) => data.res.clearCookie(key, options)
             }
