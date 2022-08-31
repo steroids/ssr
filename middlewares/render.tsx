@@ -69,6 +69,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             throw new Error(`Please save application's config in variable and export it from _SsrApplication`);
         }
 
+        // Application init
         const history = getHistory(req.url);
 
         const components = getComponents({appConfig, req, res, history});
@@ -76,6 +77,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
 
         await initApplication(components);
 
+        // Preload lists and fetches, get fetches data
         const {fetchConfigs, listsConfigs} = getPreloadConfigs(appConfig.routes(), req.path);
         let preloadedData = {} as IPreloadedData;
         try {
@@ -85,6 +87,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             console.error(err);
         }
 
+        // Render application to string
         const context: StaticRouterContext = {};
 
         const bundleHTML = renderToString(
@@ -104,6 +107,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             return;
         }
 
+        // Render resulting HTML to string
         const html = getHTML({
             helmet: Helmet.rewind(),
             bundleHTML,
