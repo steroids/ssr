@@ -4,8 +4,17 @@ import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
 import {Helmet, HelmetData} from 'react-helmet';
 import {ComponentsProvider, SsrProvider} from '@steroidsjs/core/providers';
-import {getComponents, initComponents, getHistory, getAssets, getPreloadedData, initApplication} from '../utils';
+import {
+    getComponents,
+    initComponents,
+    getHistory,
+    getAssets,
+    getPreloadedFetchesData,
+    initApplication,
+    initLists
+} from '../utils';
 import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
+import {getPreloadConfigs} from '../utils/getPreloadedData';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -67,9 +76,11 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
 
         await initApplication(components);
 
+        const {fetchConfigs, listsConfigs} = getPreloadConfigs(appConfig.routes(), req.path);
         let preloadedData = {} as IPreloadedData;
         try {
-            preloadedData = await getPreloadedData(appConfig.routes(), req.path, components);
+            await initLists(listsConfigs, components);
+            preloadedData = await getPreloadedFetchesData(fetchConfigs, components);
         } catch (err) {
             console.error(err);
         }
