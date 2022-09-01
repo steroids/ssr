@@ -8,7 +8,7 @@ import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
 
 const addCancelTokenMock = () => {}
 
-const getRoutePreloadData = (routesTree: IRouteItem[], path: Request['path']): (IFetchConfig | IListProps)[] => {
+const getRoutePreloadData = (routesTree: IRouteItem, path: Request['path']): (IFetchConfig | IListProps)[] => {
     for (const route of treeToList(routesTree)) {
         const matchResult = matchPath(path, route);
         if (matchResult) {
@@ -21,7 +21,7 @@ const getRoutePreloadData = (routesTree: IRouteItem[], path: Request['path']): (
     return [];
 };
 
-export const getPreloadConfigs = (routesTree: IRouteItem[], path: Request['path']): {fetchConfigs: IFetchConfig[], listsConfigs: IListProps[]} => {
+export const getPreloadConfigs = (routesTree: IRouteItem, path: Request['path']): {routeFetchConfigs: IFetchConfig[], routeListsConfigs: IListProps[]} => {
     const fetchConfigs = [];
     const listsConfigs = [];
 
@@ -31,18 +31,20 @@ export const getPreloadConfigs = (routesTree: IRouteItem[], path: Request['path'
         if ('listId' in config) {
             listsConfigs.push(config);
         } else {
-            fetchConfigs.push(normalizeConfig(config));
+            fetchConfigs.push(config);
         }
     });
 
     return {
-        fetchConfigs,
-        listsConfigs,
+        routeFetchConfigs: fetchConfigs,
+        routeListsConfigs: listsConfigs,
     };
 }
 
 const getPreloadedFetchesData = async (fetchConfigs: IFetchConfig[], components: IComponents): Promise<IPreloadedData> => {
-    const fetchPromises = fetchConfigs.map(config => fetchData(config, components, addCancelTokenMock));
+    const fetchPromises = fetchConfigs
+        .map(config => normalizeConfig(config))
+        .map(config => fetchData(config, components, addCancelTokenMock));
 
     return Promise.all(fetchPromises)
         .then(result => result.reduce(

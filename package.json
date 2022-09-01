@@ -1,6 +1,6 @@
 {
   "name": "@steroidsjs/ssr",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "",
   "author": "Vladimir Kozhin <hello@kozhindev.com>",
   "repository": {
@@ -14,7 +14,7 @@
     "url": "https://github.com/steroids/ssr/issues"
   },
   "dependencies": {
-    "@steroidsjs/core": "latest",
+    "@steroidsjs/core": "^2.2.86",
     "@types/express": "^4.17.12",
     "@types/react-helmet": "^6.1.1",
     "cookie-parser": "^1.4.5",

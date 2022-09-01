@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {renderToStaticMarkup, renderToString} from 'react-dom/server';
+import {renderToString} from 'react-dom/server';
 import {NextFunction, Request, Response} from 'express';
 import {StaticRouterContext} from 'react-router';
 import {Helmet, HelmetData} from 'react-helmet';
@@ -15,6 +15,7 @@ import {
 } from '../utils';
 import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
 import {getPreloadConfigs} from '../utils/getPreloadedData';
+import {IApplicationHookConfig} from '@steroidsjs/core/hooks/useApplication';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -27,44 +28,58 @@ interface IHTMLParams {
     preloadedData: IPreloadedData
 }
 
-const getHTML = ({bundleHTML, store, helmet, preloadedData}: IHTMLParams): string => {
+export const API_ID_CUSTOM_CODE_FETCH = 'api_id_custom_code_fetch';
+export type ICustomCodeFetchResult = {
+    head?: string,
+    bodyStart?: string,
+    bodyEnd?: string,
+};
+
+const compileHtmlDocument = ({bundleHTML, store, helmet, preloadedData}: IHTMLParams): string => {
     const stats = getAssets(require('_SsrStats'));
 
-    const html = renderToStaticMarkup(
-        <html>
-            <head>
-                <meta charSet='utf-8'/>
-                <meta name='viewport' content='width=device-width, initial-scale=1'/>
-                {['base', 'title', 'meta', 'link', 'style', 'script'].map(tagName => (
-                    <React.Fragment key={tagName}>
-                        {helmet[tagName].toComponent()}
-                    </React.Fragment>
-                ))}
-                {stats.css.map((path, index) => (
-                    <link key={index} href={`/${path}`} rel='stylesheet'/>
-                ))}
-            </head>
-            <body>
-                <noscript>You need to enable JavaScript to run this app.</noscript>
-                {helmet.noscript.toComponent()}
-                <div id='root' dangerouslySetInnerHTML={{__html: bundleHTML}}/>
-                <script dangerouslySetInnerHTML={{
-                    __html: `window.APP_REDUX_PRELOAD_STATES = ${JSON.stringify([store])};
-                        window.APP_PRELOADED_DATA=${JSON.stringify(preloadedData)}`
-                }}/>
-                {stats.js.map((path, index) => (
-                    <script key={index} src={`/${path}`}/>
-                ))}
-            </body>
-        </html>
-    );
+    const isCustomCodeFetched = API_ID_CUSTOM_CODE_FETCH in preloadedData;
+    const customCodePreloadData: ICustomCodeFetchResult = isCustomCodeFetched
+        ? preloadedData[API_ID_CUSTOM_CODE_FETCH]
+        : {};
 
-    return `<!doctype html>${html}`;
+    const headCustomCode = customCodePreloadData.head || '';
+    const bodyStartCustomCode = customCodePreloadData.bodyStart || '';
+    const bodyEndCustomCode = customCodePreloadData.bodyEnd || '';
+
+    if (isCustomCodeFetched) {
+        preloadedData[API_ID_CUSTOM_CODE_FETCH] = undefined
+    }
+
+    return `
+<!doctype html>
+<html>
+<head>
+    <meta charSet='utf-8'/>
+    <meta name='viewport' content='width=device-width, initial-scale=1'/>
+    ${['base', 'title', 'meta', 'link', 'style', 'script'].map(tagName => helmet[tagName].toString()).join('')}
+    ${stats.css.map(path => `<link href='/${path}' rel='stylesheet'/>`).join('')}
+    ${headCustomCode}
+</head>
+<body>
+    ${bodyStartCustomCode}
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    ${helmet.noscript.toString()}
+    <div id='root'>${bundleHTML}</div>
+    <script>
+        window.APP_REDUX_PRELOAD_STATES = ${JSON.stringify([store])};
+        window.APP_PRELOADED_DATA = ${JSON.stringify(preloadedData)}
+    </script>
+    ${stats.js.map(path => `<script src='/${path}'></script>`).join('')}
+    ${bodyEndCustomCode}
+</body>
+</html>`;
 };
 
 export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
     res.renderBundle = async () => {
-        const {default: Application, config: appConfig} = require('_SsrApplication');
+        const {default: Application, config} = require('_SsrApplication');
+        const appConfig = config as unknown as IApplicationHookConfig;
         if (!appConfig) {
             throw new Error(`Please save application's config in variable and export it from _SsrApplication`);
         }
@@ -78,10 +93,12 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
         await initApplication(components);
 
         // Preload lists and fetches, get fetches data
-        const {fetchConfigs, listsConfigs} = getPreloadConfigs(appConfig.routes(), req.path);
+        const {routeFetchConfigs, routeListsConfigs} = getPreloadConfigs(appConfig.routes(), req.path);
         let preloadedData = {} as IPreloadedData;
         try {
-            await initLists(listsConfigs, components);
+            await initLists(routeListsConfigs, components);
+            const defaultFetchConfigs = appConfig.defaultFetches || [];
+            const fetchConfigs = [...routeFetchConfigs, ...defaultFetchConfigs];
             preloadedData = await getPreloadedFetchesData(fetchConfigs, components);
         } catch (err) {
             console.error(err);
@@ -108,7 +125,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
         }
 
         // Render resulting HTML to string
-        const html = getHTML({
+        const html = compileHtmlDocument({
             helmet: Helmet.rewind(),
             bundleHTML,
             store: components.store.getState(),
