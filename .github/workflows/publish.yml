@@ -1,0 +1,14 @@
+name: NPM Publish
+on:
+  push:
+    branches:
+      - 'main'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          package: ./package.json
+          token: ${{ secrets.NPM_TOKEN }}
