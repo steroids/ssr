@@ -1,6 +1,7 @@
 import {Request} from 'express';
 import {matchPath} from 'react-router-dom';
-import {IRouteItem, treeToList} from '@steroidsjs/core/ui/nav/Router/Router';
+import {IRouteItem} from '@steroidsjs/core/ui/nav/Router/Router';
+import {treeToList} from '@steroidsjs/core/ui/nav/Router/helpers';
 import {IListProps} from '@steroidsjs/core/ui/list/List/List'
 import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
 import {getConfigId, normalizeConfig, fetchData, IFetchConfig} from '@steroidsjs/core/hooks/useFetch';
