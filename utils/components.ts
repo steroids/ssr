@@ -2,7 +2,7 @@ import {Request, Response} from 'express';
 import _merge from 'lodash-es/merge';
 import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
 import {initRoutes} from '@steroidsjs/core/actions/router';
-import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/Router';
+import {walkRoutesRecursive} from '@steroidsjs/core/ui/nav/Router/helpers';
 import {defaultComponents, IApplicationHookConfig} from '@steroidsjs/core/hooks/useApplication';
 import {IHistory} from './getHistory';
 import {detectLanguage} from '../utils';
