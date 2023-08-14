@@ -13,8 +13,8 @@ const getRoutePreloadData = (routesTree: IRouteItem, path: Request['path']): (IF
     for (const route of treeToList(routesTree)) {
         const matchResult = matchPath(path, route);
         if (matchResult) {
-            return route.preloadedData
-                ? route.preloadedData(matchResult)
+            return route.preloadData
+                ? route.preloadData(matchResult)
                 : [];
         }
     }
