@@ -3,7 +3,7 @@ export interface IHistory {
 }
 
 const getHistory = (url: string): IHistory => {
-    return {initialEntries: [url || '/']}
+    return {initialEntries: [encodeURI(url) || '/']}
 }
 
 export default getHistory;
