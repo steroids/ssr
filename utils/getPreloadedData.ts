@@ -5,7 +5,11 @@ import {treeToList} from '@steroidsjs/core/ui/nav/Router/helpers';
 import {IListProps} from '@steroidsjs/core/ui/list/List/List'
 import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
 import {getConfigId, normalizeConfig, fetchData, IFetchConfig} from '@steroidsjs/core/hooks/useFetch';
-import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
+
+export interface IPreloadedFetchResult {
+    data: Record<string, any>;
+    errors: Record<string, ReturnType<typeof normalizeError>>;
+}
 
 const addCancelTokenMock = () => {}
 
@@ -69,29 +73,35 @@ const normalizeError = (error: unknown) => {
 const getPreloadedFetchesData = async (
     fetchConfigs: IFetchConfig[],
     components: IComponents
-): Promise<IPreloadedData> => {
+): Promise<IPreloadedFetchResult> => {
     const fetchPromises = fetchConfigs
         .map(normalizeConfig)
-        .map((config, index) =>
+        .map(config =>
             fetchData(config, components, addCancelTokenMock)
-                .then(data => ({ ok: true, data }))
-                .catch(error => ({ ok: false, error: normalizeError(error) }))
+                .then(data => ({ ok: true as const, data }))
+                .catch(error => ({ ok: false as const, error: normalizeError(error) }))
         );
 
     const results = await Promise.all(fetchPromises);
 
-    return results.reduce((acc, result, index) => {
-        const configId = getConfigId(fetchConfigs[index]);
+    return results.reduce<IPreloadedFetchResult>(
+        (acc, result, index) => {
+            const configId = getConfigId(fetchConfigs[index]);
 
-        acc[configId] = result.ok
-            ? result.data
-            : {
-                __error: true,
-                error: result.error,
-            };
+            if (result.ok) {
+                acc.data[configId] = result.data;
+            } else {
+                acc.errors[configId] = result.error;
+            }
 
-        return acc;
-    }, {} as IPreloadedData);
+            return acc;
+        },
+        {
+            data: {},
+            errors: {},
+        }
+    );
 };
+
 
 export default getPreloadedFetchesData;
