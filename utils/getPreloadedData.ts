@@ -42,20 +42,56 @@ export const getPreloadConfigs = (routesTree: IRouteItem, path: Request['path'])
     };
 }
 
-const getPreloadedFetchesData = async (fetchConfigs: IFetchConfig[], components: IComponents): Promise<IPreloadedData> => {
-    const fetchPromises = fetchConfigs
-        .map(config => normalizeConfig(config))
-        .map(config => fetchData(config, components, addCancelTokenMock));
+const normalizeError = (error: unknown) => {
+    if ((error as any)?.isAxiosError) {
+        const axiosError = error as any;
+        return {
+            isAxiosError: true,
+            status: axiosError.response?.status,
+            message: axiosError.message,
+            data: axiosError.response?.data,
+        };
+    }
 
-    return Promise.all(fetchPromises)
-        .then(result => result.reduce(
-            (fetchedDataByConfigId, fetchedData, fetchIndex) => {
-                const configId = getConfigId(fetchConfigs[fetchIndex]);
-                fetchedDataByConfigId[configId] = fetchedData;
-                return fetchedDataByConfigId;
-            },
-            {},
-        ));
-}
+    if (error instanceof Error) {
+        return {
+            isAxiosError: false,
+            message: error.message,
+        };
+    }
+
+    return {
+        isAxiosError: false,
+        message: String(error),
+    };
+};
+
+const getPreloadedFetchesData = async (
+    fetchConfigs: IFetchConfig[],
+    components: IComponents
+): Promise<IPreloadedData> => {
+    const fetchPromises = fetchConfigs
+        .map(normalizeConfig)
+        .map((config, index) =>
+            fetchData(config, components, addCancelTokenMock)
+                .then(data => ({ ok: true, data }))
+                .catch(error => ({ ok: false, error: normalizeError(error) }))
+        );
+
+    const results = await Promise.all(fetchPromises);
+
+    return results.reduce((acc, result, index) => {
+        const configId = getConfigId(fetchConfigs[index]);
+
+        acc[configId] = result.ok
+            ? result.data
+            : {
+                __error: true,
+                error: result.error,
+            };
+
+        return acc;
+    }, {} as IPreloadedData);
+};
 
 export default getPreloadedFetchesData;
