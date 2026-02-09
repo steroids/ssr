@@ -49,11 +49,18 @@ export const getPreloadConfigs = (routesTree: IRouteItem, path: Request['path'])
 const normalizeError = (error: unknown) => {
     if ((error as any)?.isAxiosError) {
         const axiosError = error as any;
+
         return {
             isAxiosError: true,
-            status: axiosError.response?.status,
-            message: axiosError.message,
-            data: axiosError.response?.data,
+            response: {
+                data: axiosError.response?.data,
+                status: axiosError.response?.status,
+                statusText: axiosError.response?.data,
+                headers: axiosError.response?.headers,
+                config: axiosError.response?.config,
+            },
+            code: axiosError?.code,
+            message: axiosError?.message,
         };
     }
 
@@ -78,20 +85,32 @@ const getPreloadedFetchesData = async (
         .map(normalizeConfig)
         .map(config =>
             fetchData(config, components, addCancelTokenMock)
-                .then(data => ({ ok: true as const, data }))
-                .catch(error => ({ ok: false as const, error: normalizeError(error) }))
+                .then(data => ({
+                    ok: true as const,
+                    data,
+                    config
+                }))
+                .catch(error => ({
+                    ok: false as const,
+                    error: normalizeError(error),
+                    config
+                }))
         );
 
     const results = await Promise.all(fetchPromises);
 
     return results.reduce<IPreloadedFetchResult>(
-        (acc, result, index) => {
-            const configId = getConfigId(fetchConfigs[index]);
+        (acc, result) => {
+            const configId = getConfigId(result.config);
 
             if (result.ok) {
                 acc.data[configId] = result.data;
             } else {
-                acc.errors[configId] = result.error;
+                // Если fetch не критический — кладём в errors, но не ломаем статус
+                acc.errors[configId] = {
+                    ...result.error,
+                    isCritical: result.config.isCritical ?? true,
+                };
             }
 
             return acc;
