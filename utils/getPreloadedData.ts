@@ -106,7 +106,7 @@ const getPreloadedFetchesData = async (
             if (result.ok) {
                 acc.data[configId] = result.data;
             } else {
-                // Если fetch не критический — кладём в errors, но не ломаем статус
+                // Если fetch не критический — кладём в errors, но не ломаем статус страницы
                 acc.errors[configId] = {
                     ...result.error,
                     isCritical: result.config.isCritical ?? true,
