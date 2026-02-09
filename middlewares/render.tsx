@@ -11,6 +11,7 @@ import {
     getAssets,
     getPreloadedFetchesData,
     initApplication,
+    getStatusCode,
     initLists,
 } from '../utils';
 import {getPreloadConfigs, IPreloadedFetchResult} from '../utils/getPreloadedData';
@@ -143,20 +144,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             preloadedErrors,
         });
 
-        const resolveStatusCode = (context, preloadedErrors) => {
-            // Ищем только критические ошибки
-            const criticalErrors = Object.values(preloadedErrors).filter((e: any) => e.isCritical) as any;
-
-            const firstStatus = criticalErrors.find((criticalError: any) => criticalError?.response?.status)?.response?.status;
-
-            if (firstStatus) {
-                return firstStatus;
-            }
-
-            return context.statusCode || 200;
-        };
-
-        const statusCode = resolveStatusCode(context, preloadedErrors);
+        const statusCode = getStatusCode(context, preloadedErrors);
 
         res
             .status(statusCode)
