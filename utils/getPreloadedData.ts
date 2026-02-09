@@ -5,7 +5,11 @@ import {treeToList} from '@steroidsjs/core/ui/nav/Router/helpers';
 import {IListProps} from '@steroidsjs/core/ui/list/List/List'
 import {IComponents} from '@steroidsjs/core/providers/ComponentsProvider';
 import {getConfigId, normalizeConfig, fetchData, IFetchConfig} from '@steroidsjs/core/hooks/useFetch';
-import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
+
+export interface IPreloadedFetchResult {
+    data: Record<string, any>;
+    errors: Record<string, ReturnType<typeof normalizeError>>;
+}
 
 const addCancelTokenMock = () => {}
 
@@ -42,20 +46,81 @@ export const getPreloadConfigs = (routesTree: IRouteItem, path: Request['path'])
     };
 }
 
-const getPreloadedFetchesData = async (fetchConfigs: IFetchConfig[], components: IComponents): Promise<IPreloadedData> => {
-    const fetchPromises = fetchConfigs
-        .map(config => normalizeConfig(config))
-        .map(config => fetchData(config, components, addCancelTokenMock));
+const normalizeError = (error: unknown) => {
+    if ((error as any)?.isAxiosError) {
+        const axiosError = error as any;
 
-    return Promise.all(fetchPromises)
-        .then(result => result.reduce(
-            (fetchedDataByConfigId, fetchedData, fetchIndex) => {
-                const configId = getConfigId(fetchConfigs[fetchIndex]);
-                fetchedDataByConfigId[configId] = fetchedData;
-                return fetchedDataByConfigId;
+        return {
+            isAxiosError: true,
+            response: {
+                data: axiosError.response?.data,
+                status: axiosError.response?.status,
+                statusText: axiosError.response?.data,
+                headers: axiosError.response?.headers,
+                config: axiosError.response?.config,
             },
-            {},
-        ));
-}
+            code: axiosError?.code,
+            message: axiosError?.message,
+        };
+    }
+
+    if (error instanceof Error) {
+        return {
+            isAxiosError: false,
+            message: error.message,
+        };
+    }
+
+    return {
+        isAxiosError: false,
+        message: String(error),
+    };
+};
+
+const getPreloadedFetchesData = async (
+    fetchConfigs: IFetchConfig[],
+    components: IComponents
+): Promise<IPreloadedFetchResult> => {
+    const fetchPromises = fetchConfigs
+        .map(normalizeConfig)
+        .map(config =>
+            fetchData(config, components, addCancelTokenMock)
+                .then(data => ({
+                    ok: true as const,
+                    data,
+                    config
+                }))
+                .catch(error => ({
+                    ok: false as const,
+                    error: normalizeError(error),
+                    config
+                }))
+        );
+
+    const results = await Promise.all(fetchPromises);
+
+    return results.reduce<IPreloadedFetchResult>(
+        (acc, result) => {
+            const configId = getConfigId(result.config);
+
+            if (result.ok) {
+                acc.data[configId] = result.data;
+            } else {
+                // Если fetch не критический — кладём в errors, но не ломаем статус страницы
+                acc.errors[configId] = {
+                    ...result.error,
+                    isCritical: result.config.isCritical ?? true,
+                };
+            }
+
+            return acc;
+        },
+        {
+            data: {},
+            errors: {},
+        }
+    );
+};
+
 
 export default getPreloadedFetchesData;

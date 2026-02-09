@@ -11,11 +11,11 @@ import {
     getAssets,
     getPreloadedFetchesData,
     initApplication,
-    initLists
+    initLists,
 } from '../utils';
-import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
-import {getPreloadConfigs} from '../utils/getPreloadedData';
+import {getPreloadConfigs, IPreloadedFetchResult} from '../utils/getPreloadedData';
 import {IApplicationHookConfig} from '@steroidsjs/core/hooks/useApplication';
+import {IPreloadedData} from '@steroidsjs/core/providers/SsrProvider';
 
 export interface ResponseWithRender extends Response {
     renderBundle: () => void;
@@ -25,17 +25,19 @@ interface IHTMLParams {
     bundleHTML: string,
     helmet: HelmetData,
     store: any,
-    preloadedData: IPreloadedData
+    preloadedData: IPreloadedData,
+    preloadedErrors: Record<string, any>,
 }
 
 export const API_ID_CUSTOM_CODE_FETCH = 'api_id_custom_code_fetch';
+
 export type ICustomCodeFetchResult = {
     head?: string,
     bodyStart?: string,
-    bodyEnd?: string,
+    bodyEnd?: string
 };
 
-const compileHtmlDocument = ({bundleHTML, store, helmet, preloadedData}: IHTMLParams): string => {
+const compileHtmlDocument = ({bundleHTML, store, helmet, preloadedData, preloadedErrors}: IHTMLParams): string => {
     const stats = getAssets(require('_SsrStats'));
 
     const isCustomCodeFetched = API_ID_CUSTOM_CODE_FETCH in preloadedData;
@@ -68,7 +70,8 @@ const compileHtmlDocument = ({bundleHTML, store, helmet, preloadedData}: IHTMLPa
     <div id='root'>${bundleHTML}</div>
     <script>
         window.APP_REDUX_PRELOAD_STATES = ${JSON.stringify([store])};
-        window.APP_PRELOADED_DATA = ${JSON.stringify(preloadedData)}
+        window.APP_PRELOADED_DATA = ${JSON.stringify(preloadedData)};
+        window.APP_PRELOADED_ERRORS = ${JSON.stringify(preloadedErrors)};
     </script>
     ${stats.js.map(path => `<script src='/${path}'></script>`).join('')}
     ${bodyEndCustomCode}
@@ -92,14 +95,20 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
 
         await initApplication(components);
 
-        // Preload lists and fetches, get fetches data
+        // Preload lists and fetches
         const {routeFetchConfigs, routeListsConfigs} = getPreloadConfigs(appConfig.routes(), req.path);
         let preloadedData = {} as IPreloadedData;
+        let preloadedErrors: Record<string, any> = {};
         try {
             await initLists(routeListsConfigs, components);
             const defaultFetchConfigs = appConfig.defaultFetches || [];
             const fetchConfigs = [...routeFetchConfigs, ...defaultFetchConfigs];
-            preloadedData = await getPreloadedFetchesData(fetchConfigs, components);
+
+            const preloadResult: IPreloadedFetchResult =
+                await getPreloadedFetchesData(fetchConfigs, components);
+
+            preloadedData = preloadResult.data;
+            preloadedErrors = preloadResult.errors;
         } catch (err) {
             console.error(err);
         }
@@ -112,6 +121,7 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
                 history={history}
                 staticContext={context}
                 preloadedData={preloadedData}
+                preloadedErrors={preloadedErrors}
             >
                 <ComponentsProvider components={components}>
                     <Application/>
@@ -129,14 +139,29 @@ export default (req: Request, res: ResponseWithRender, next: NextFunction) => {
             helmet: Helmet.rewind(),
             bundleHTML,
             store: components.store.getState(),
-            preloadedData
+            preloadedData,
+            preloadedErrors,
         });
 
+        const resolveStatusCode = (context, preloadedErrors) => {
+            // Ищем только критические ошибки
+            const criticalErrors = Object.values(preloadedErrors).filter((e: any) => e.isCritical) as any;
+
+            const firstStatus = criticalErrors.find((criticalError: any) => criticalError?.response?.status)?.response?.status;
+
+            if (firstStatus) {
+                return firstStatus;
+            }
+
+            return context.statusCode || 200;
+        };
+
+        const statusCode = resolveStatusCode(context, preloadedErrors);
+
         res
-            .status(context.statusCode || 200)
+            .status(statusCode)
             .send(html);
     }
 
     next();
 }
-
