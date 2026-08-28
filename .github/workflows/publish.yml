@@ -9,11 +9,14 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    if: ${{ contains(github.event.head_commit.message, 'Update version') }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - run: yarn
+      - run: yarn build
       - uses: JS-DevTools/npm-publish@v4
         with:
-          package: ./package.json
+          package: ./dist/package.json

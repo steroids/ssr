@@ -86,7 +86,11 @@ export const initComponents = (components: IComponents, data: {appConfig: IAppli
             components.store.dispatch(toDispatch);
         },
         [ComponentsEnum.Http]: () => {
-            const accessToken = components.clientStorage.get(components.http.accessTokenKey, components.clientStorage.STORAGE_COOKIE);
+            const accessToken = components.clientStorage.get(
+                components.http.accessTokenKey,
+                // @ts-ignore
+                components.clientStorage.STORAGE_COOKIE
+            );
             if (accessToken) {
                 components.http.setAccessToken(accessToken);
             }

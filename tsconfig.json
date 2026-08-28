@@ -4,5 +4,13 @@
     "experimentalDecorators": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-  }
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "noEmit": true,
+  },
+  "include": [
+    "index.ts",
+    "middlewares/**/*",
+    "utils/**/*"
+  ]
 }
