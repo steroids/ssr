@@ -7,7 +7,7 @@
 
 Параметр | Значение по умолчанию | Описание
 ------------ | ------------- | -------------
-```serverPath``` | ```node_modules/@steroidsjs/ssr/index.ts``` | Путь до файла, в котором запускается SSR.
+```serverPath``` | ```node_modules/@steroidsjs/ssr/index.js``` | Путь до файла, в котором запускается SSR.
 ```applicationPath``` | ```src/Application.tsx``` | Файл, который экспортирует компонент ```Application``` (по умолчанию)  и переменную ```config```. В переменной ```config``` содержится конфигурация с типом ```IApplicationHookConfig``` для хука ```useApplication```. Без этих данных SSR работать не будет.
 ```initActionPath``` | ```src/shared/Layout/Layout.tsx``` | Файл, который экспортирует функцию ```initAction```. Эта функция передаётся в хук ```useLayout``` и нужна для первоначальной подгрузки данных с бэкенда и инициализации приложения.
 ```ssr``` | ```{}``` | Дополнительная webpack-конфигурация для серверной сборки.
@@ -21,7 +21,7 @@ require('@steroidsjs/webpack')
     sourcePath: __dirname + '/src',
     staticPath: '',
     baseUrl: 'frontend/',
-    serverPath: '/node_modules/@steroidsjs/ssr/index.ts',
+    serverPath: '/node_modules/@steroidsjs/ssr/index.js',
     applicationPath: 'src/Application.tsx',
     initActionPath: 'src/shared/Layout/Layout.tsx',
     ssr: {
